@@ -16,7 +16,7 @@ Built with **PyTorch**, **SpikingJelly**, **FastAPI**, and **Supabase**, featuri
 ### 1. Environment Setup
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/neuromorphic-poc.git
+git clone https://github.com/Shaswat1110/neuromorphic-poc.git
 cd neuromorphic-poc
 
 # Create a virtual environment and install dependencies
@@ -25,8 +25,10 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure Supabase
-Create a `.env` file in the root directory and add your Supabase credentials:
+### 2. Configure Supabase (Optional)
+**Note for Judges:** The architecture is designed to automatically fall back to a local, in-memory state if no database is detected. You do **NOT** need to set up Supabase to test this project. It will run perfectly out of the box!
+
+*(Optional)* If you wish to test the remote state mutation, create a `.env` file in the root directory:
 ```env
 SUPABASE_URL="your-supabase-url"
 SUPABASE_KEY="your-anon-key"
