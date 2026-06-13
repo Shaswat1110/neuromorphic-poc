@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+websockets
+spikingjelly
+tonic
+torch
+torchvision
+torchaudio
+supabase
+python-dotenv

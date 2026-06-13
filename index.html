@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNN Neuromorphic Telemetry Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(20, 25, 40, 0.7);
+            --neon-blue: #00f3ff;
+            --neon-purple: #9d00ff;
+            --neon-green: #00ff66;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background: radial-gradient(circle at top, #1a1b3a, var(--bg-color));
+        }
+
+        header {
+            width: 100%;
+            padding: 2rem;
+            text-align: center;
+            box-sizing: border-box;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            background: rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 2rem auto;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 2rem;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+            backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+            opacity: 0.5;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .status-card {
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.02);
+            transition: all 0.3s ease;
+        }
+
+        .status-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--neon-blue);
+            margin: 0.5rem 0;
+            text-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button {
+            background: rgba(0, 0, 0, 0.5);
+            color: var(--text-main);
+            border: 1px solid var(--neon-purple);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background: rgba(157, 0, 255, 0.2);
+            box-shadow: 0 0 20px rgba(157, 0, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        button.active {
+            border-color: var(--neon-green);
+            background: rgba(0, 255, 102, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 102, 0.3);
+            color: var(--neon-green);
+        }
+
+        .indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+            margin-right: 8px;
+            box-shadow: 0 0 10px transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .indicator.on {
+            background-color: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        /* Micro-animations */
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .pulse-active {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Neuromorphic Pipeline Telemetry</h1>
+        <p style="color: var(--text-muted); margin-top: 0.5rem;">SNN Real-Time CUDA Simulation Dashboard</p>
+    </header>
+
+    <div class="container">
+        <div class="panel">
+            <h2 style="margin-top: 0; font-size: 1.2rem; color: var(--text-muted);">Spike Rate Density (60Hz Stream)</h2>
+            <div class="chart-container">
+                <canvas id="spikeChart"></canvas>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="status-card pulse-active" id="rateCard">
+                <div class="status-label">Current Spike Rate</div>
+                <div class="status-value" id="currentRate">0</div>
+                <div class="status-label" style="font-size: 0.8rem; opacity: 0.7;">spikes / 500ms</div>
+            </div>
+
+            <div class="status-card">
+                <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                    <div class="indicator" id="learningIndicator"></div>
+                    <span class="status-label" style="margin:0;">STDP Learning Protocol</span>
+                </div>
+                <button id="toggleLearningBtn" onclick="toggleLearning()">Enable STDP</button>
+            </div>
+            
+            <div class="status-card" style="padding: 1rem;">
+                <div class="status-label">Connection Status</div>
+                <div id="wsStatus" style="color: var(--neon-green); margin-top: 0.5rem; font-weight: bold;">Connected</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart.js Setup
+        const ctx = document.getElementById('spikeChart').getContext('2d');
+        
+        // Gradient for chart area
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(0, 243, 255, 0.5)');
+        gradient.addColorStop(1, 'rgba(0, 243, 255, 0.0)');
+
+        const chartConfig = {
+            type: 'line',
+            data: {
+                labels: Array(300).fill(''),
+                datasets: [{
+                    label: 'Spike Rate',
+                    data: Array(300).fill(0),
+                    borderColor: '#00f3ff',
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 0,
+                    pointHitRadius: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 70,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                }
+            }
+        };
+
+        const spikeChart = new Chart(ctx, chartConfig);
+
+        // WebSocket Connection
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws/spikes`;
+        let ws;
+
+        function connectWebSocket() {
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                document.getElementById('wsStatus').textContent = 'Connected';
+                document.getElementById('wsStatus').style.color = 'var(--neon-green)';
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                updateDashboard(data);
+            };
+
+            ws.onclose = () => {
+                document.getElementById('wsStatus').textContent = 'Disconnected';
+                document.getElementById('wsStatus').style.color = '#ef4444';
+                setTimeout(connectWebSocket, 1000); // Reconnect
+            };
+        }
+
+        // Initialize connection
+        connectWebSocket();
+
+        // Update UI
+        function updateDashboard(data) {
+            // Update chart
+            const chartData = spikeChart.data.datasets[0].data;
+            chartData.push(data.spike_rate);
+            if (chartData.length > 300) {
+                chartData.shift();
+            }
+            spikeChart.update();
+
+            // Update stats
+            document.getElementById('currentRate').textContent = data.spike_rate;
+
+            // Update learning state UI
+            const btn = document.getElementById('toggleLearningBtn');
+            const indicator = document.getElementById('learningIndicator');
+            
+            if (data.learning_active) {
+                btn.textContent = 'Disable STDP';
+                btn.classList.add('active');
+                indicator.classList.add('on');
+            } else {
+                btn.textContent = 'Enable STDP';
+                btn.classList.remove('active');
+                indicator.classList.remove('on');
+            }
+        }
+
+        // Toggle learning endpoint
+        async function toggleLearning() {
+            const btn = document.getElementById('toggleLearningBtn');
+            btn.style.opacity = '0.5';
+            try {
+                const response = await fetch('/toggle_learning', { method: 'POST' });
+                const result = await response.json();
+                console.log('Toggle result:', result);
+            } catch (error) {
+                console.error('Error toggling learning:', error);
+            } finally {
+                btn.style.opacity = '1';
+            }
+        }
+    </script>
+</body>
+</html>
