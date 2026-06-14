@@ -8,3 +8,4 @@ torchvision
 torchaudio
 supabase
 python-dotenv
+tensorboard
